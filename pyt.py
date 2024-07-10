@@ -1,6 +1,7 @@
 import tkinter as tk
 from tkinter import messagebox
 import sqlite3
+from datetime import datetime
 
 # SQLite veritabanına bağlanma veya oluşturma
 conn = sqlite3.connect('app.db')
@@ -16,7 +17,8 @@ cursor.execute('''CREATE TABLE IF NOT EXISTS users (
 cursor.execute('''CREATE TABLE IF NOT EXISTS dashboard (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     username TEXT,
-                    info TEXT)''')
+                    info TEXT,
+                    login_time TEXT)''')
 
 conn.commit()
 
@@ -64,9 +66,9 @@ def register_screen():
     
     tk.Button(register_window, text="Register", command=register, font=("Helvetica", 12, "bold"), bg="#4CAF50", fg="white").pack(pady=20)
 
-def open_dashboard():
-    def fetch_dashboard_data():
-        cursor.execute("SELECT * FROM dashboard")
+def open_dashboard(username):
+    def fetch_dashboard_data(username):
+        cursor.execute("SELECT * FROM dashboard WHERE username = ?", (username,))
         data = cursor.fetchall()
         return data
     
@@ -77,14 +79,13 @@ def open_dashboard():
     
     tk.Label(dashboard_window, text="Dashboard", font=("Helvetica", 14, "bold")).pack(pady=10)
     
-    data = fetch_dashboard_data()
+    data = fetch_dashboard_data(username)
     if data:
-        tk.Label(dashboard_window, text="Information:", font=("Helvetica", 12, "bold")).pack()
-        for item in data:
-            tk.Label(dashboard_window, text=f"Username: {item[1]}, Info: {item[2]}").pack()
-        tk.Label(dashboard_window, text="").pack()  # Boşluk ekleyelim
-    else:
-        tk.Label(dashboard_window, text="No information available", font=("Helvetica", 12, "italic")).pack()
+        for row in data:
+            info_label = tk.Label(dashboard_window, text=f"Info: {row[2]}", font=("Helvetica", 12))
+            info_label.pack()
+            login_time_label = tk.Label(dashboard_window, text=f"Login Time: {row[3]}", font=("Helvetica", 12))
+            login_time_label.pack()
 
     tk.Button(dashboard_window, text="Open Custom Page", command=open_custom_page, font=("Helvetica", 12, "bold"), bg="#2196F3", fg="white").pack(pady=20)
     
@@ -92,7 +93,8 @@ def open_dashboard():
 
 def add_info_to_dashboard(username, info):
     try:
-        cursor.execute("INSERT INTO dashboard (username, info) VALUES (?, ?)", (username, info))
+        login_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        cursor.execute("INSERT INTO dashboard (username, info, login_time) VALUES (?, ?, ?)", (username, info, login_time))
         conn.commit()
         return True
     except sqlite3.Error as e:
@@ -117,11 +119,11 @@ def login():
     result = cursor.fetchone()
     
     if result:
-        messagebox.showinfo("Login", "Login Successful!")
-        add_info_to_dashboard(username, "Logged in successfully.")
-        open_dashboard()
+        messagebox.showinfo("Login", "Lisans doğrulandı!")
+        add_info_to_dashboard(username, "User logged in.")
+        open_dashboard(username)
     else:
-        messagebox.showerror("Login", "Invalid Username or Password")
+        messagebox.showerror("Login", "Geçersiz Kullanıcı Adı veya Şifre")
 
 # Ana pencereyi oluştur
 app = tk.Tk()
@@ -130,14 +132,14 @@ app.geometry("300x300")
 app.resizable(False, False)
 
 # Üst bilgi (header) etiketi
-header_label = tk.Label(app, text="Welcome! Please Login", font=("Helvetica", 14, "bold"))
+header_label = tk.Label(app, text="Hoş geldiniz! Lütfen giriş yapın", font=("Helvetica", 14, "bold"))
 header_label.pack(pady=10)
 
 # Kullanıcı adı etiketi ve giriş kutusu
 frame_username = tk.Frame(app)
 frame_username.pack(pady=5)
 
-label_username = tk.Label(frame_username, text="Username:", font=("Helvetica", 12))
+label_username = tk.Label(frame_username, text="Kullanıcı Adı:", font=("Helvetica", 12))
 label_username.pack(side=tk.LEFT, padx=5)
 
 entry_username = tk.Entry(frame_username, font=("Helvetica", 12))
@@ -147,18 +149,18 @@ entry_username.pack(side=tk.LEFT)
 frame_password = tk.Frame(app)
 frame_password.pack(pady=5)
 
-label_password = tk.Label(frame_password, text="Password:", font=("Helvetica", 12))
+label_password = tk.Label(frame_password, text="Şifre:", font=("Helvetica", 12))
 label_password.pack(side=tk.LEFT, padx=5)
 
 entry_password = tk.Entry(frame_password, show="*", font=("Helvetica", 12))
 entry_password.pack(side=tk.LEFT)
 
 # Giriş butonu
-login_button = tk.Button(app, text="Login", command=login, font=("Helvetica", 12, "bold"), bg="#4CAF50", fg="white")
+login_button = tk.Button(app, text="Giriş", command=login, font=("Helvetica", 12, "bold"), bg="#4CAF50", fg="white")
 login_button.pack(pady=10)
 
 # Kayıt butonu
-register_button = tk.Button(app, text="Register", command=register_screen, font=("Helvetica", 12, "bold"), bg="#2196F3", fg="white")
+register_button = tk.Button(app, text="Kayıt Ol", command=register_screen, font=("Helvetica", 12, "bold"), bg="#2196F3", fg="white")
 register_button.pack(pady=10)
 
 # Ana döngüyü başlat
